@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="cn">
+<head>
+    <meta charset="UTF-8">
+    <title>SQL</title>
+    <link rel="stylesheet" href="webjars/dojo/1.9.2/dijit/themes/claro/claro.css">
+    <style type="text/css">
+        @import "webjars/dojo/1.9.2/dojox/grid/resources/claroGrid.css";
+    </style>
+</head>
+<body class="claro">
+<p id="main"></p>
+<script>
+        var dojoConfig = {
+            async: true,
+            packages: [{
+                name: "app",
+                location: location.pathname.replace(/\/[^/]*$/, '') + '/app'
+            }]
+        };
+</script>
+<script src="webjars/dojo/1.9.2/dojo/dojo.js"></script>
+<script>
+        require([
+            'app/exec/exec'
+        ], function (Exec) {
+            var exec = new Exec();
+            exec.placeAt("main");
+        });
+    </script>
+</body>
+</html>
