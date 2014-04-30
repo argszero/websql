@@ -37,7 +37,7 @@ public class Exec {
             sql = sql.trim();
             sql = sql.replaceAll(";", "");
             if (Pattern.matches("select \\* from \\S*", sql)) {
-                sql = sql +" limit 1000";
+                sql = sql +" limit 200";
             }
             boolean success = stmt.execute(sql);
             if (success) {
@@ -56,7 +56,7 @@ public class Exec {
                     JSONArray data = new JSONArray();
                     result.put("data", data);
                     int count = 0;
-                    while (res.next() && count++ < 1000) {
+                    while (res.next() && count++ < 200) {
                         JSONArray row = new JSONArray();
                         for (int i = 1; i < columnCount; i++) {
                             row.put(res.getObject(i));
@@ -64,7 +64,7 @@ public class Exec {
                         data.put(row);
                     }
                     if (res.next()) {
-                        result.put("message", "more data than 1000 was discard!");
+                        result.put("message", "more data than 200 was discard!");
                     } else {
                         result.put("message", "all data showed below:");
                     }
