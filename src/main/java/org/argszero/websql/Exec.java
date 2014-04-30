@@ -1,5 +1,7 @@
 package org.argszero.websql;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -11,13 +13,18 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.sql.*;
+import java.util.regex.Pattern;
 
 @RestController
 @EnableAutoConfiguration
 public class Exec {
+    private static Log logger = LogFactory.getLog(Exec.class);
+
     @RequestMapping("/exec")
     @ResponseBody
     String exec(@RequestParam String sql) throws SQLException, JSONException {
+        logger.info("exec sql:" + sql);
+        System.out.println("sql:" + sql);
         JSONObject result = new JSONObject();
         Connection con = null;
         Statement stmt = null;
@@ -29,6 +36,9 @@ public class Exec {
             stmt = con.createStatement();
             sql = sql.trim();
             sql = sql.replaceAll(";", "");
+            if (Pattern.matches("select \\* from \\S*", sql)) {
+                sql = sql +" limit 1000";
+            }
             boolean success = stmt.execute(sql);
             if (success) {
                 res = stmt.getResultSet();
