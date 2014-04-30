@@ -1,0 +1,1 @@
+nohup java -DLOG_FILE="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"/logs/websql.log -jar "$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"/websql-1.0-SNAPSHOT.war --server.port=8080 >/dev/null 2>&1 &
