@@ -1,5 +1,6 @@
 <div class="${baseClass}" data-dojo-attach-point="focusNode"
      role="menuitem" tabIndex="-1">
+    <input data-dojo-attach-point="connectionSelectDom"/><span data-dojo-attach-point="monitor"></span>
     <textarea data-dojo-attach-point="sqlEditor" data-dojo-type="dijit/form/Textarea"></textarea>
     <button data-dojo-type="dijit/form/Button" data-dojo-attach-event="onClick:execSql">查询</button>
     <div data-dojo-attach-point="message"></div>
