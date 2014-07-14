@@ -28,7 +28,7 @@ import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
 @RestController
-@EnableAutoConfiguration
+@RequestMapping("/jdbc")
 public class Exec {
     private static Log logger = LogFactory.getLog(Exec.class);
 
@@ -70,15 +70,16 @@ public class Exec {
     @RequestMapping("/init")
     @Transactional
     void init() {
-        ConnectionConfig config = new ConnectionConfig();
-        config.setDriver("hive-jdbc-0.11.0-shark-0.9.1");
-        config.setDriverClass("org.apache.hive.jdbc.HiveDriver");
-        config.setName("dmp@dmp001:hive-jdbc-0.11.0-shark-0.9.1");
-        config.setUrl("jdbc:hive2://10.161.0.15:10002/default");
-        config.setPwd("dmp");
-        config.setUsr("dmp");
-        config.setMonitorLink("http://10.161.0.15:4040/");
-        connectionConfigRepo.save(config);
+        ConnectionConfig config;
+//         config = new ConnectionConfig();
+//        config.setDriver("hive-jdbc-0.11.0-shark-0.9.1");
+//        config.setDriverClass("org.apache.hive.jdbc.HiveDriver");
+//        config.setName("dmp@dmp001:hive-jdbc-0.11.0-shark-0.9.1");
+//        config.setUrl("jdbc:hive2://10.161.0.15:10002/default");
+//        config.setPwd("dmp");
+//        config.setUsr("dmp");
+//        config.setMonitorLink("http://10.161.0.15:4040/");
+//        connectionConfigRepo.save(config);
 
         config = new ConnectionConfig();
         config.setDriver("hive-jdbc-0.12.0-cdh5.0.0");
@@ -89,10 +90,21 @@ public class Exec {
         config.setUsr("dmp");
         config.setMonitorLink("http://10.161.0.15:8338/");
         connectionConfigRepo.save(config);
+
+        config = new ConnectionConfig();
+        config.setDriver("apache-spark-branch-1.0-jdbc");
+        config.setName("dmp@dmp001:apache-spark-branch-1.0-jdbc");
+        config.setDriverClass("org.apache.hive.jdbc.HiveDriver");
+        config.setUrl("jdbc:hive2://dmp001:10003/default");
+        config.setPwd("dmp");
+        config.setUsr("dmp");
+        config.setMonitorLink("http://dmp001:4040/");
+        connectionConfigRepo.save(config);
     }
 
     @RequestMapping("/connection_config")
     @ResponseBody
+    @Transactional
     List<ConnectionConfig> findAll() {
         List<ConnectionConfig> configs = new ArrayList<>();
         for (ConnectionConfig conf : connectionConfigRepo.findAll()) {
@@ -104,22 +116,41 @@ public class Exec {
 
     @RequestMapping("/exec")
     @ResponseBody
+    @Transactional
     String exec(@RequestParam String sql, @RequestParam Long connectionConfigId) throws SQLException, JSONException, IOException, URISyntaxException, ClassNotFoundException, IllegalAccessException, InstantiationException {
+        long limit = 100;
         sql = sql.trim();
-        sql = sql.replaceAll(";", "");
-        if (Pattern.matches("select \\* from \\S*", sql)) {
-            sql = sql + " limit 100";
+        if (sql.endsWith(";")) {
+            sql = sql.substring(0, sql.length() - 1);
+        }
+        String[] sqls = sql.split(";");
+        for (int i = 0; i < sqls.length; i++) {
+            if (Pattern.matches("select \\* from \\S*", sqls[i])) {
+                sqls[i] = sqls[i] + " limit " + limit;
+            }
         }
         logger.info("exec sql:" + sql);
-        System.out.println("sql:" + sql);
         JSONObject result = new JSONObject();
         ConnectionConfig config = connectionConfigRepo.findOne(connectionConfigId);
         try (ThreadClassLoader classLoader = new ThreadClassLoader(config.getDriver())) {
-            Class driver = Class.forName(config.getDriverClass(), true, classLoader);
-            logger.info("use driver from :" + driver.getResource("HiveDriver.class"));
-            DriverManager.registerDriver(new DelegatingDriver((Driver) driver.newInstance())); // register using the Delegating Driver
-            try (Connection con = DriverManager.getConnection(config.getUrl(), config.getUsr(), config.getPwd());
-                 Statement stmt = con.createStatement()) {
+            Class driverClass = Class.forName(config.getDriverClass(), true, classLoader);
+            logger.info("use driverClass from :" + driverClass.getResource("HiveDriver.class"));
+            DelegatingDriver driver = new DelegatingDriver((Driver) driverClass.newInstance());
+            try {
+                DriverManager.registerDriver(driver); // register using the Delegating Driver
+                exec(sqls, result, config, limit);
+            } finally {
+                DriverManager.deregisterDriver(driver);
+            }
+        }
+        return result.toString();
+    }
+
+    private void exec(String[] sqls, JSONObject result, ConnectionConfig config, long limit) throws SQLException, JSONException {
+        try (Connection con = DriverManager.getConnection(config.getUrl(), config.getUsr(), config.getPwd());
+             Statement stmt = con.createStatement()) {
+            for (String sql : sqls) {
+                logger.info("exec sql:" + sql);
                 boolean success = stmt.execute(sql);
                 if (success) {
                     int updateCount = stmt.getUpdateCount();
@@ -137,7 +168,7 @@ public class Exec {
                             JSONArray data = new JSONArray();
                             result.put("data", data);
                             int count = 0;
-                            while (res.next() && count++ < 100) {
+                            while (res.next() && count++ < limit) {
                                 JSONArray row = new JSONArray();
                                 for (int i = 1; i < columnCount; i++) {
                                     row.put(res.getObject(i));
@@ -145,7 +176,7 @@ public class Exec {
                                 data.put(row);
                             }
                             if (res.next()) {
-                                result.put("message", "more data than 200 was discard!");
+                                result.put("message", "more data than " + limit + " was discard!");
                             } else {
                                 result.put("message", "all data showed below:");
                             }
@@ -157,7 +188,6 @@ public class Exec {
                 result.put("success", success);
             }
         }
-        return result.toString();
     }
 
     private static class DelegatingDriver implements Driver {

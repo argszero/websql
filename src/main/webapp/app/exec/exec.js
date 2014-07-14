@@ -1,4 +1,4 @@
-define(["dojo/_base/declare", "dijit/_WidgetBase", "dijit/_TemplatedMixin", "dijit/_WidgetsInTemplateMixin", "dojo/text!./templates/exec.html", "dojo/_base/lang", "dojo/parser", "dojo/request", "dojo/dom-style", "dijit/registry", "dijit/form/Button", "dijit/form/TextBox", "dijit/form/Textarea", "dojo/store/Memory", "dijit/form/FilteringSelect", 'dojox/grid/DataGrid', 'dojo/data/ItemFileWriteStore'], function(declare, _WidgetBase, _TemplatedMixin, _WidgetsInTemplateMixin, template, lang, parser, request, domStyle, registry, Button, TextBox, Textarea, Memory, FilteringSelect, DataGrid, ItemFileWriteStore) {
+define(["dojo/_base/declare", "dijit/_WidgetBase", "dijit/_TemplatedMixin", "dijit/_WidgetsInTemplateMixin", "dojo/text!./templates/exec.html", "dojo/_base/lang", "dojo/parser", "dojo/request", "dojo/dom-style","dojox/timing", "dijit/registry", "dijit/form/Button", "dijit/form/TextBox", "dijit/form/Textarea", "dojo/store/Memory", "dijit/form/FilteringSelect", 'dojox/grid/DataGrid', 'dojo/data/ItemFileWriteStore'], function(declare, _WidgetBase, _TemplatedMixin, _WidgetsInTemplateMixin, template, lang, parser, request, domStyle,timing, registry, Button, TextBox, Textarea, Memory, FilteringSelect, DataGrid, ItemFileWriteStore) {
 	return declare([_WidgetBase, _TemplatedMixin, _WidgetsInTemplateMixin], {
 		templateString: template,
 		baseClass: "execWidget",
@@ -9,7 +9,14 @@ define(["dojo/_base/declare", "dijit/_WidgetBase", "dijit/_TemplatedMixin", "dij
 		monitor: null,
 		execSql: function() {
 			var message = this.message;
-			request.post("exec.json", {
+			var t = new timing.Timer(1000);
+			startTime = new Date().getTime();
+			t.onTick = function(){
+			    var secondsPassed = (new Date().getTime() - startTime) / 1000;
+               message.innerHTML = "escaped "+secondsPassed +" seconds";
+            }
+            t.start();
+			request.post("jdbc/exec.json", {
 				data: {
 					sql: this.sqlEditor.value,
 					connectionConfigId: this.connectionSelect.get('value')
@@ -17,6 +24,7 @@ define(["dojo/_base/declare", "dijit/_WidgetBase", "dijit/_TemplatedMixin", "dij
 			}).then(function(text) {
 				//				                var text="{success:true,\"message\":\"all data showed below:\",\"data\":[[\"ad_data\"],[\"ci_dwd_bh_adsl_log_enhance_yyyymmdd    aaaaaaaaaaaaaaaaa   bbbbbbbbbbbbbbbbbbbbb\"],[\"dim_industry\"],[\"li_ods_bh_adsl_log_decode_yyyymmdd\"],[\"li_ods_bh_adsl_log_out_yyyymmdd\"],[\"li_ods_bh_adsl_log_out_yyyymmdd_2\"],[\"lx_ad_data\"],[\"lx_li_ods_bh_adsl_log_decode_yyyymmdd\"],[\"lx_li_ods_bh_adsl_log_out_yyyymmdd\"],[\"ui_mobile_user_src_shdx_ad\"],[\"yalian_dpi_cdr_3day\"],[\"yalian_dpi_cdr_3day_o\"],[\"ydid_src\"],[\"yk_cookie_yyyymmdd\"]],\"meta\":{\"columnCount\":1,\"columnNames\":[\"tab_name\"]}}";
 				var result = dojo.fromJson(text);
+				t.stop();
 				if (!result.success) {
 					message.innerHTML = "";
 				} else {
@@ -80,12 +88,16 @@ define(["dojo/_base/declare", "dijit/_WidgetBase", "dijit/_TemplatedMixin", "dij
 						message.innerHTML = "updated " + result.updateCount + " rows";
 					}
 				}
+			},
+			function(error){
+			    t.stop();
+                message.innerHTML = "error:"+error;
 			});
 		},
 		postCreate: function() {
 			this.inherited(arguments);
 			var self = this;
-			request.post("connection_config.json", {}).then(function(text) {
+			request.post("jdbc/connection_config.json", {}).then(function(text) {
 				var stateStore = new Memory({
 					data: dojo.fromJson(text)
 				})
@@ -96,7 +108,7 @@ define(["dojo/_base/declare", "dijit/_WidgetBase", "dijit/_TemplatedMixin", "dij
 					store: stateStore,
 					searchAttr: "name",
 					onChange: function(id, b) {
-						self.monitor.innerHTML = "<a href=\"" + stateStore.get(id).monitorLink + "\">监控页面</a>"
+						self.monitor.innerHTML = "<a target=\"monitor\" href=\"" + stateStore.get(id).monitorLink + "\">监控页面</a>"
 					}
 				},
 				self.connectionSelectDom);

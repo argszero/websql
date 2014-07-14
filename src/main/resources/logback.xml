@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
-    <property name="LOG_PATTERN" value="[%d{yyyy-MM-dd HH:mm:ss.SSS}] - ${PID:-????} %5p [%t] --- %c{1}: %m%n"/>
-    <property name="LOG_FILE" value="${LOG_FILE:-${LOG_PATH:-/tmp/}spring.log}"/>
+    <property name="LOG_PATTERN" value="[%d{yyyy-MM-dd HH:mm:ss.SSS}]-${PID:-????}-%5p-[%t]-%c{1}: %m%n"/>
+    <property name="LOG_FILE" value="${LOG_FILE:-${LOG_PATH:-${app.root:-/tmp}}/logs/websql.log}"/>
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
             <pattern>${LOG_PATTERN}</pattern>
@@ -24,7 +24,7 @@
     <logger name="org.springframework.integration.file" level="DEBUG" />
     <logger name="jdbc" level="WARN"/>
     <logger name="jdbc.sqltiming" level="INFO"/>
-    <logger name="jdbc.resultsettable" level="INFO"/>
+    <!--<logger name="jdbc.resultsettable" level="INFO"/>-->
     <root level="INFO">
         <appender-ref ref="CONSOLE" />
         <appender-ref ref="FILE" />
